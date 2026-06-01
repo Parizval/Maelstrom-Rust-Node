@@ -40,16 +40,23 @@ enum Payload {
         node_ids: Vec<String>,
     },
     InitOk,
+    Generate,
+    GenerateOk {
+        id: String,
+    },
 }
 
 struct EchoNode {
     id: usize,
+    node_id: String,
 }
 
 impl EchoNode {
     pub fn step(&mut self, input: Message, output: &mut StdoutLock) -> anyhow::Result<()> {
         match input.body.payload {
-            Payload::Init { .. } => {
+            Payload::Init { node_id, .. } => {
+                self.node_id = node_id;
+
                 let reply = Message {
                     src: input.dst,
                     dst: input.src,
@@ -87,6 +94,26 @@ impl EchoNode {
             Payload::EchoOk { echo: _ } => {
                 // Do nothing
             }
+            Payload::Generate => {
+                let reply = Message {
+                    src: input.dst,
+                    dst: input.src,
+                    body: Body {
+                        id: Some(self.id),
+                        in_reply_to: input.body.id,
+                        payload: Payload::GenerateOk {
+                            id: format!("{}{}", self.node_id, self.id).to_string(),
+                        },
+                    },
+                };
+
+                serde_json::to_writer(&mut *output, &reply)
+                    .context("serialize response to Echo")?;
+                output.write_all(b"\n")?;
+
+                self.id += 1;
+            }
+            Payload::GenerateOk { id: _ } => {}
         }
 
         Ok(())
@@ -118,7 +145,10 @@ fn main() -> anyhow::Result<()> {
 
     let mut stdout = std::io::stdout().lock();
 
-    let mut state = EchoNode { id: 0 };
+    let mut state = EchoNode {
+        id: 0,
+        node_id: String::new(),
+    };
 
     for input in inputs {
         let input = input.context("Maelstrom input from STDIN could not be deserialized")?;
