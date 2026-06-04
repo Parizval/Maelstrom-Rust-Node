@@ -1,7 +1,7 @@
-use anyhow::{bail, Context};
+use anyhow::bail;
 use maelstrom_rust_node::{Body, Message, Node};
 use serde::{Deserialize, Serialize};
-use std::io::{StdoutLock, Write};
+use std::io::StdoutLock;
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 #[serde(tag = "type")]
@@ -46,9 +46,7 @@ impl Node<EchoPayload> for EchoNode {
 
                 self.id += 1;
 
-                serde_json::to_writer(&mut *output, &reply)
-                    .context("serialize response to Echo")?;
-                output.write_all(b"\n")?;
+                <EchoNode as Node<EchoPayload>>::send_message(reply, output)?;
             }
             EchoPayload::InitOk => bail!("Should not receive InitOk as input"),
             EchoPayload::Echo { echo } => {
@@ -62,9 +60,7 @@ impl Node<EchoPayload> for EchoNode {
                     },
                 };
 
-                serde_json::to_writer(&mut *output, &reply)
-                    .context("serialize response to Echo")?;
-                output.write_all(b"\n")?;
+                <EchoNode as Node<EchoPayload>>::send_message(reply, output)?;
 
                 self.id += 1;
             }
