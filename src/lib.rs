@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+use std::io::{StdoutLock, Write};
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct Message<Payload> {
@@ -28,6 +29,15 @@ pub trait Node<Payload> {
         input: Message<Payload>,
         output: &mut std::io::StdoutLock,
     ) -> anyhow::Result<()>;
+
+    fn send_message(message: Message<Payload>, output: &mut StdoutLock) -> anyhow::Result<()>
+    where
+        Payload: Serialize,
+    {
+        serde_json::to_writer(&mut *output, &message)?;
+        output.write_all(b"\n")?;
+        Ok(())
+    }
 }
 pub fn main_loop<S, Payload>() -> anyhow::Result<()>
 where
