@@ -35,7 +35,7 @@ pub enum MultiNodeBroadcastPayload {
 pub struct MultiNodeBroadcast {
     id: usize,
     node_id: String,
-    topology: Vec<String>,
+    neighbours: Vec<String>,
     storage: HashSet<usize>,
 }
 
@@ -44,7 +44,7 @@ impl Default for MultiNodeBroadcast {
         Self {
             id: 0,
             node_id: String::new(),
-            topology: Vec::new(),
+            neighbours: Vec::new(),
             storage: HashSet::new(),
         }
     }
@@ -57,9 +57,12 @@ impl Node<MultiNodeBroadcastPayload> for MultiNodeBroadcast {
         output: &mut StdoutLock,
     ) -> anyhow::Result<()> {
         match input.body.payload {
-            MultiNodeBroadcastPayload::Init { node_id, .. } => {
+            MultiNodeBroadcastPayload::Init { node_id, node_ids } => {
                 self.node_id = node_id;
-
+                self.neighbours = node_ids
+                    .into_iter()
+                    .filter(|n| *n != self.node_id)
+                    .collect();
                 let reply = Message {
                     src: input.dst,
                     dst: input.src,
@@ -106,8 +109,8 @@ impl Node<MultiNodeBroadcastPayload> for MultiNodeBroadcast {
                     },
                 };
 
-                for node in self.topology.clone() {
-                    internal_message.dst = node;
+                for node in &self.neighbours {
+                    internal_message.dst = node.to_string();
                     <MultiNodeBroadcast as Node<MultiNodeBroadcastPayload>>::send_message(
                         internal_message.clone(),
                         output,
@@ -135,7 +138,7 @@ impl Node<MultiNodeBroadcastPayload> for MultiNodeBroadcast {
                     reply, output,
                 )?;
             }
-            MultiNodeBroadcastPayload::Topology { topology } => {
+            MultiNodeBroadcastPayload::Topology { .. } => {
                 let reply = Message {
                     src: input.dst,
                     dst: input.src,
@@ -145,12 +148,6 @@ impl Node<MultiNodeBroadcastPayload> for MultiNodeBroadcast {
                         payload: MultiNodeBroadcastPayload::TopologyOk,
                     },
                 };
-                for (key, value) in topology.into_iter() {
-                    if key == self.node_id {
-                        self.topology = value;
-                        break;
-                    }
-                }
 
                 self.id += 1;
 
