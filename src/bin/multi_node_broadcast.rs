@@ -91,32 +91,35 @@ impl Node<MultiNodeBroadcastPayload> for MultiNodeBroadcast {
                         payload: MultiNodeBroadcastPayload::BroadcastOk,
                     },
                 };
-                self.storage.insert(message);
-                self.id += 1;
+                let propagation = self.storage.insert(message);
 
                 <MultiNodeBroadcast as Node<MultiNodeBroadcastPayload>>::send_message(
                     reply, output,
                 )?;
-                let data = Vec::from_iter(self.storage.clone());
+                self.id += 1;
 
-                let mut internal_message = Message {
-                    src: self.node_id.clone(),
-                    dst: String::new(),
-                    body: Body {
-                        id: Some(self.id),
-                        in_reply_to: None,
-                        payload: MultiNodeBroadcastPayload::InternalMessage { data },
-                    },
-                };
+                if propagation {
+                    let data = Vec::from_iter(self.storage.clone());
 
-                for node in &self.neighbours {
-                    internal_message.dst = node.to_string();
-                    <MultiNodeBroadcast as Node<MultiNodeBroadcastPayload>>::send_message(
-                        internal_message.clone(),
-                        output,
-                    )?;
+                    let mut internal_message = Message {
+                        src: self.node_id.clone(),
+                        dst: String::new(),
+                        body: Body {
+                            id: Some(self.id),
+                            in_reply_to: None,
+                            payload: MultiNodeBroadcastPayload::InternalMessage { data },
+                        },
+                    };
 
-                    self.id += 1;
+                    for node in &self.neighbours {
+                        internal_message.dst = node.to_string();
+                        <MultiNodeBroadcast as Node<MultiNodeBroadcastPayload>>::send_message(
+                            internal_message.clone(),
+                            output,
+                        )?;
+
+                        self.id += 1;
+                    }
                 }
             }
 
