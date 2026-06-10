@@ -1,5 +1,5 @@
 use anyhow::bail;
-use maelstrom_rust_node::{Body, Message, Node};
+use maelstrom_rust_node::{Message, Node};
 use serde::{Deserialize, Serialize};
 use std::io::StdoutLock;
 
@@ -48,20 +48,12 @@ impl Node<SingleNodeBroadcastPayload> for SingleNodeBroadcast {
         input: Message<SingleNodeBroadcastPayload>,
         output: &mut StdoutLock,
     ) -> anyhow::Result<()> {
-        match input.body.payload {
+        let mut reply = input.into_reply(Some(self.id));
+        match reply.body.payload {
             SingleNodeBroadcastPayload::Init { node_id, .. } => {
                 self.node_id = node_id;
 
-                let reply = Message {
-                    src: input.dst,
-                    dst: input.src,
-                    body: Body {
-                        id: Some(self.id),
-                        in_reply_to: input.body.id,
-                        payload: SingleNodeBroadcastPayload::InitOk,
-                    },
-                };
-
+                reply.body.payload = SingleNodeBroadcastPayload::InitOk;
                 self.id += 1;
 
                 <SingleNodeBroadcast as Node<SingleNodeBroadcastPayload>>::send_message(
@@ -71,16 +63,9 @@ impl Node<SingleNodeBroadcastPayload> for SingleNodeBroadcast {
             SingleNodeBroadcastPayload::InitOk => bail!("Should not receive InitOk as input"),
 
             SingleNodeBroadcastPayload::Broadcast { message } => {
-                let reply = Message {
-                    src: input.dst,
-                    dst: input.src,
-                    body: Body {
-                        id: Some(self.id),
-                        in_reply_to: input.body.id,
-                        payload: SingleNodeBroadcastPayload::BroadcastOk,
-                    },
-                };
                 self.storage.push(message);
+
+                reply.body.payload = SingleNodeBroadcastPayload::BroadcastOk;
                 self.id += 1;
 
                 <SingleNodeBroadcast as Node<SingleNodeBroadcastPayload>>::send_message(
@@ -88,34 +73,16 @@ impl Node<SingleNodeBroadcastPayload> for SingleNodeBroadcast {
                 )?;
             }
             SingleNodeBroadcastPayload::Read => {
-                let reply = Message {
-                    src: input.dst,
-                    dst: input.src,
-                    body: Body {
-                        id: Some(self.id),
-                        in_reply_to: input.body.id,
-                        payload: SingleNodeBroadcastPayload::ReadOk {
-                            messages: self.storage.clone(),
-                        },
-                    },
+                reply.body.payload = SingleNodeBroadcastPayload::ReadOk {
+                    messages: self.storage.clone(),
                 };
-
                 self.id += 1;
                 <SingleNodeBroadcast as Node<SingleNodeBroadcastPayload>>::send_message(
                     reply, output,
                 )?;
             }
             SingleNodeBroadcastPayload::Topology { .. } => {
-                let reply = Message {
-                    src: input.dst,
-                    dst: input.src,
-                    body: Body {
-                        id: Some(self.id),
-                        in_reply_to: input.body.id,
-                        payload: SingleNodeBroadcastPayload::TopologyOk,
-                    },
-                };
-
+                reply.body.payload = SingleNodeBroadcastPayload::TopologyOk;
                 self.id += 1;
                 <SingleNodeBroadcast as Node<SingleNodeBroadcastPayload>>::send_message(
                     reply, output,
