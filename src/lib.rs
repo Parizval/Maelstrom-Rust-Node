@@ -9,10 +9,22 @@ pub struct Message<Payload> {
     pub body: Body<Payload>,
 }
 
+impl<Payload> Message<Payload> {
+    pub fn into_reply(self, id: Option<usize>) -> Self {
+        Self {
+            src: self.dst,
+            dst: self.src,
+            body: Body {
+                id,
+                in_reply_to: self.body.id,
+                payload: self.body.payload,
+            },
+        }
+    }
+}
+
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct Body<Payload> {
-    // #[serde(rename = "type")]
-    // ty: String,
     #[serde(rename = "msg_id")]
     pub id: Option<usize>,
 
@@ -36,6 +48,7 @@ pub trait Node<Payload> {
     {
         serde_json::to_writer(&mut *output, &message)?;
         output.write_all(b"\n")?;
+        output.flush()?;
         Ok(())
     }
 }

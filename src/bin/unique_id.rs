@@ -1,5 +1,5 @@
 use anyhow::{bail, Context};
-use maelstrom_rust_node::{Body, Message, Node};
+use maelstrom_rust_node::{Message, Node};
 use serde::{Deserialize, Serialize};
 use std::io::StdoutLock;
 
@@ -38,20 +38,12 @@ impl Node<UniqueIdPayload> for UniqueIdNode {
         input: Message<UniqueIdPayload>,
         output: &mut StdoutLock,
     ) -> anyhow::Result<()> {
-        match input.body.payload {
+        let mut reply = input.into_reply(Some(self.id));
+        match reply.body.payload {
             UniqueIdPayload::Init { node_id, .. } => {
                 self.node_id = node_id;
 
-                let reply = Message {
-                    src: input.dst,
-                    dst: input.src,
-                    body: Body {
-                        id: Some(self.id),
-                        in_reply_to: input.body.id,
-                        payload: UniqueIdPayload::InitOk,
-                    },
-                };
-
+                reply.body.payload = UniqueIdPayload::InitOk;
                 self.id += 1;
 
                 <UniqueIdNode as Node<UniqueIdPayload>>::send_message(reply, output)
@@ -60,22 +52,12 @@ impl Node<UniqueIdPayload> for UniqueIdNode {
             UniqueIdPayload::InitOk => bail!("Should not receive InitOk as input"),
 
             UniqueIdPayload::Generate => {
-                let reply = Message {
-                    src: input.dst,
-                    dst: input.src,
-                    body: Body {
-                        id: Some(self.id),
-                        in_reply_to: input.body.id,
-                        payload: UniqueIdPayload::GenerateOk {
-                            id: format!("{}{}", self.node_id, self.id).to_string(),
-                        },
-                    },
+                reply.body.payload = UniqueIdPayload::GenerateOk {
+                    id: format!("{}-{}", self.node_id, self.id).to_string(),
                 };
-
+                self.id += 1;
                 <UniqueIdNode as Node<UniqueIdPayload>>::send_message(reply, output)
                     .context("serialize response to Echo")?;
-
-                self.id += 1;
             }
             UniqueIdPayload::GenerateOk { id: _ } => {}
         }

@@ -1,5 +1,5 @@
 use anyhow::bail;
-use maelstrom_rust_node::{Body, Message, Node};
+use maelstrom_rust_node::{Message, Node};
 use serde::{Deserialize, Serialize};
 use std::io::StdoutLock;
 
@@ -32,34 +32,18 @@ impl Default for EchoNode {
 
 impl Node<EchoPayload> for EchoNode {
     fn step(&mut self, input: Message<EchoPayload>, output: &mut StdoutLock) -> anyhow::Result<()> {
-        match input.body.payload {
-            EchoPayload::Init { .. } => {
-                let reply = Message {
-                    src: input.dst,
-                    dst: input.src,
-                    body: Body {
-                        id: Some(self.id),
-                        in_reply_to: input.body.id,
-                        payload: EchoPayload::InitOk,
-                    },
-                };
+        let mut reply = input.into_reply(Some(self.id));
 
+        match reply.body.payload {
+            EchoPayload::Init { .. } => {
+                reply.body.payload = EchoPayload::InitOk;
                 self.id += 1;
 
                 <EchoNode as Node<EchoPayload>>::send_message(reply, output)?;
             }
             EchoPayload::InitOk => bail!("Should not receive InitOk as input"),
             EchoPayload::Echo { echo } => {
-                let reply = Message {
-                    src: input.dst,
-                    dst: input.src,
-                    body: Body {
-                        id: Some(self.id),
-                        in_reply_to: input.body.id,
-                        payload: EchoPayload::EchoOk { echo },
-                    },
-                };
-
+                reply.body.payload = EchoPayload::EchoOk { echo };
                 <EchoNode as Node<EchoPayload>>::send_message(reply, output)?;
 
                 self.id += 1;
