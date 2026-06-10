@@ -56,23 +56,17 @@ impl Node<MultiNodeBroadcastPayload> for MultiNodeBroadcast {
         input: Message<MultiNodeBroadcastPayload>,
         output: &mut StdoutLock,
     ) -> anyhow::Result<()> {
-        match input.body.payload {
+        let mut reply = input.into_reply(Some(self.id));
+
+        match reply.body.payload {
             MultiNodeBroadcastPayload::Init { node_id, node_ids } => {
                 self.node_id = node_id;
                 self.neighbours = node_ids
                     .into_iter()
                     .filter(|n| *n != self.node_id)
                     .collect();
-                let reply = Message {
-                    src: input.dst,
-                    dst: input.src,
-                    body: Body {
-                        id: Some(self.id),
-                        in_reply_to: input.body.id,
-                        payload: MultiNodeBroadcastPayload::InitOk,
-                    },
-                };
 
+                reply.body.payload = MultiNodeBroadcastPayload::InitOk;
                 self.id += 1;
 
                 <MultiNodeBroadcast as Node<MultiNodeBroadcastPayload>>::send_message(
@@ -82,15 +76,8 @@ impl Node<MultiNodeBroadcastPayload> for MultiNodeBroadcast {
             MultiNodeBroadcastPayload::InitOk => bail!("Should not receive InitOk as input"),
 
             MultiNodeBroadcastPayload::Broadcast { message } => {
-                let reply = Message {
-                    src: input.dst,
-                    dst: input.src,
-                    body: Body {
-                        id: Some(self.id),
-                        in_reply_to: input.body.id,
-                        payload: MultiNodeBroadcastPayload::BroadcastOk,
-                    },
-                };
+                reply.body.payload = MultiNodeBroadcastPayload::BroadcastOk;
+
                 let propagation = self.storage.insert(message);
 
                 <MultiNodeBroadcast as Node<MultiNodeBroadcastPayload>>::send_message(
@@ -125,16 +112,7 @@ impl Node<MultiNodeBroadcastPayload> for MultiNodeBroadcast {
 
             MultiNodeBroadcastPayload::Read => {
                 let data = Vec::from_iter(self.storage.clone());
-                let reply = Message {
-                    src: input.dst,
-                    dst: input.src,
-                    body: Body {
-                        id: Some(self.id),
-                        in_reply_to: input.body.id,
-                        payload: MultiNodeBroadcastPayload::ReadOk { messages: data },
-                    },
-                };
-
+                reply.body.payload = MultiNodeBroadcastPayload::ReadOk { messages: data };
                 self.id += 1;
 
                 <MultiNodeBroadcast as Node<MultiNodeBroadcastPayload>>::send_message(
@@ -142,16 +120,7 @@ impl Node<MultiNodeBroadcastPayload> for MultiNodeBroadcast {
                 )?;
             }
             MultiNodeBroadcastPayload::Topology { .. } => {
-                let reply = Message {
-                    src: input.dst,
-                    dst: input.src,
-                    body: Body {
-                        id: Some(self.id),
-                        in_reply_to: input.body.id,
-                        payload: MultiNodeBroadcastPayload::TopologyOk,
-                    },
-                };
-
+                reply.body.payload = MultiNodeBroadcastPayload::TopologyOk;
                 self.id += 1;
 
                 <MultiNodeBroadcast as Node<MultiNodeBroadcastPayload>>::send_message(
