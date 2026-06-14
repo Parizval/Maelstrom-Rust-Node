@@ -1,4 +1,4 @@
-use anyhow::bail;
+use anyhow::{bail, Result};
 use maelstrom_rust_node::{Message, Node};
 use serde::{Deserialize, Serialize};
 use std::io::StdoutLock;
@@ -97,10 +97,6 @@ impl Node<SingleNodeBroadcastPayload> for SingleNodeBroadcast {
     }
 }
 
-fn main() {
-    if let Err(e) =
-        maelstrom_rust_node::main_loop::<SingleNodeBroadcast, SingleNodeBroadcastPayload>()
-    {
-        eprintln!("Error: {e}");
-    }
+fn main() -> Result<()> {
+    maelstrom_rust_node::main_loop::<SingleNodeBroadcast, SingleNodeBroadcastPayload>()
 }

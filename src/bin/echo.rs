@@ -1,4 +1,4 @@
-use anyhow::bail;
+use anyhow::{bail, Result};
 use maelstrom_rust_node::{Message, Node};
 use serde::{Deserialize, Serialize};
 use std::io::StdoutLock;
@@ -56,8 +56,6 @@ impl Node<EchoPayload> for EchoNode {
         Ok(())
     }
 }
-fn main() {
-    if let Err(e) = maelstrom_rust_node::main_loop::<EchoNode, EchoPayload>() {
-        eprintln!("Error: {e}");
-    }
+fn main() -> Result<()> {
+    maelstrom_rust_node::main_loop::<EchoNode, EchoPayload>()
 }

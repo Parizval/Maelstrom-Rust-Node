@@ -1,4 +1,4 @@
-use anyhow::{bail, Context};
+use anyhow::{bail, Context, Result};
 use maelstrom_rust_node::{Message, Node};
 use serde::{Deserialize, Serialize};
 use std::io::StdoutLock;
@@ -66,8 +66,6 @@ impl Node<UniqueIdPayload> for UniqueIdNode {
     }
 }
 
-fn main() {
-    if let Err(e) = maelstrom_rust_node::main_loop::<UniqueIdNode, UniqueIdPayload>() {
-        eprintln!("Error: {e}");
-    }
+fn main() -> Result<()> {
+    maelstrom_rust_node::main_loop::<UniqueIdNode, UniqueIdPayload>()
 }
