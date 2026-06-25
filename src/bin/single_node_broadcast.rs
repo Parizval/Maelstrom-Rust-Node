@@ -25,21 +25,11 @@ pub enum SingleNodeBroadcastPayload {
     },
     TopologyOk,
 }
-
+#[derive(Debug, Default)]
 pub struct SingleNodeBroadcast {
     id: usize,
     node_id: String,
     storage: Vec<usize>,
-}
-
-impl Default for SingleNodeBroadcast {
-    fn default() -> Self {
-        Self {
-            id: 0,
-            node_id: String::new(),
-            storage: Vec::new(),
-        }
-    }
 }
 
 impl Node<SingleNodeBroadcastPayload> for SingleNodeBroadcast {
@@ -88,7 +78,7 @@ impl Node<SingleNodeBroadcastPayload> for SingleNodeBroadcast {
                     reply, output,
                 )?;
             }
-            SingleNodeBroadcastPayload::BroadcastOk {}
+            SingleNodeBroadcastPayload::BroadcastOk
             | SingleNodeBroadcastPayload::ReadOk { .. }
             | SingleNodeBroadcastPayload::TopologyOk => {}
         }

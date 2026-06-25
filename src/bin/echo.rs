@@ -19,15 +19,9 @@ pub enum EchoPayload {
     },
     InitOk,
 }
-
+#[derive(Debug, Default)]
 pub struct EchoNode {
     id: usize,
-}
-
-impl Default for EchoNode {
-    fn default() -> Self {
-        Self { id: 0 }
-    }
 }
 
 impl Node<EchoPayload> for EchoNode {

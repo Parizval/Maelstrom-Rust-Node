@@ -17,19 +17,10 @@ pub enum UniqueIdPayload {
         id: String,
     },
 }
-
+#[derive(Debug, Default)]
 pub struct UniqueIdNode {
     id: usize,
     node_id: String,
-}
-
-impl Default for UniqueIdNode {
-    fn default() -> Self {
-        Self {
-            id: 0,
-            node_id: String::new(),
-        }
-    }
 }
 
 impl Node<UniqueIdPayload> for UniqueIdNode {
